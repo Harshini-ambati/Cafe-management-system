@@ -1,0 +1,235 @@
+import random
+from datetime import datetime
+
+class CafeSystem:
+    GST_RATE = 0.05 
+
+    def __init__(self):
+        # Master Menu
+        self.menu = {
+            "PIZZA": 3.00,
+            "POPCORN": 4.50,
+            "FRIES": 2.50,
+            "CHIPS": 1.00,
+            "SODA": 3.00,
+            "COFFEE": 2.80,
+            "LEMONADE": 4.25,
+            "COKE": 2.75
+        }
+        self.coupons = {"TREAT26": 0.20, "WELCOME10": 0.10}
+        self.order_history = []
+        self.total_daily_sales = 0.0
+
+    def display_menu(self):
+        """Displays the available food items and their prices."""
+        print("\n========== CAFE MENU ==========")
+        for item, price in self.menu.items():
+            print(f"{item:<10} : ${price:.2f}")
+        print("=============================")
+
+    def get_valid_qty(self, Quantity="Enter quantity: "):
+        """Guarantees a valid positive integer quantity."""
+        while True:
+            try:
+                qty = int(input(Quantity))
+                if qty <= 0:
+                    print("Quantity must be greater than 0.")
+                    continue
+                return qty
+            except ValueError:
+                print("Invalid input! Please enter a whole number.")
+
+    def manage_cart(self, cart):
+        """Allows direct modifications to the cart using actions like UPDATE, REMOVE, CLEAR."""
+        while True:
+            if not cart:
+                print("\nYour cart is currently empty.")
+                return
+
+            print("\n--- Current Cart ---")
+            for item, qty in cart.items():
+                print(f"- {item}: x{qty} (${self.menu[item]*qty:.2f})")
+            print("--------------------")
+
+            action = input("Type (UPDATE / REMOVE / CLEAR / BACK): ").upper().strip()
+
+            if action == "UPDATE":
+                item = input("Enter item name to update: ").upper().strip()
+                if item in cart:
+                    new_qty = self.get_valid_qty(f"Enter new quantity for {item}: ")
+                    cart[item] = new_qty
+                    print(f"Updated {item} quantity to {new_qty}.")
+                else:
+                    print("Item not found in your cart.")
+
+            elif action == "REMOVE":
+                item = input("Enter item name to remove: ").upper().strip()
+                if item in cart:
+                    del cart[item]
+                    print(f"Removed {item} from cart.")
+                else:
+                    print("Item not found in your cart.")
+
+            elif action == "CLEAR":
+                cart.clear()
+                print("Cart cleared completely!")
+                return
+
+            elif action == "BACK":
+                break
+            else:
+                print("Unknown cart action. Please type UPDATE, REMOVE, CLEAR, or BACK.")
+
+    def build_cart(self):
+        """Runs the shopping loop and returns a completed cart, or None if empty."""
+        cart = {}
+        while True:
+            print("\n Enter item name to add.")
+            print("-> Commands: 'CART' to view/edit, 'CHECKOUT' to finish, 'CANCEL' to abort.")
+            food = input("Enter item or command: ").upper().strip()
+
+            if food == "CHECKOUT":
+                break
+            elif food == "CANCEL":
+                print("Order cancelled.")
+                return None
+            elif food == "CART":
+                self.manage_cart(cart)
+                continue
+            elif food in self.menu:
+                qty = self.get_valid_qty()
+                cart[food] = cart.get(food, 0) + qty
+                print(f"Added {food} x{qty} to cart.")
+            else:
+                print("Invalid item or command! Look at the menu or type a system command.")
+
+        if not cart:
+            print("No items in cart. Order cancelled.")
+            return None
+        return cart
+
+    def calculate_bill(self, cart):
+        """Applies coupon discount and GST to a cart, returns a dict of the totals."""
+        subtotal = sum(self.menu[item] * qty for item, qty in cart.items())
+
+        coupon = input("\nEnter Coupon Code (or press Enter to skip): ").upper().strip()
+        discount = subtotal * self.coupons.get(coupon, 0.0)
+        if discount > 0:
+            print(f"Success! Coupon applied. You saved ${discount:.2f}")
+        elif coupon != "":
+            print("Invalid or expired coupon code.")
+
+        gst = (subtotal - discount) * self.GST_RATE
+        final_total = subtotal - discount + gst
+
+        return {"subtotal": subtotal, "discount": discount, "gst": gst, "total": final_total}
+
+    def generate_receipt(self, customer, order_id, now, cart, bill):
+        """Builds the receipt text, prints it, and saves it to a file. Returns the receipt text."""
+        lines = [
+            "===================================",
+            "       CAFE MANAGEMENT SYSTEM",
+            "===================================",
+            f"Customer : {customer}",
+            f"Order ID : {order_id}",
+            f"Date & Time: {now.strftime('%d-%m-%Y %H:%M:%S')}",
+            "--------------------------------",
+            f"{'Item':<12}{'Qty':<8}{'Amount'}",
+            "--------------------------------"
+        ]
+        for food, qty in cart.items():
+            amount = self.menu[food] * qty
+            lines.append(f"{food:<12}{qty:<8}${amount:.2f}")
+
+        lines.extend([
+            "--------------------------------",
+            f"Subtotal      : ${bill['subtotal']:.2f}",
+            f"Discount      : ${bill['discount']:.2f}",
+            f"GST ({self.GST_RATE*100:.0f}%)      : ${bill['gst']:.2f}",
+            f"Final Amount  : ${bill['total']:.2f}",
+            "===================================",
+            "Thank You! Visit Again!",
+            "==================================="
+        ])
+
+        receipt_text = "\n".join(lines)
+        print("\n" + receipt_text)
+
+        filename = f"receipt_{order_id}.txt"
+        with open(filename, "w") as f:
+            f.write(receipt_text + "\n")
+        print(f"Receipt saved locally as '{filename}'")
+
+        return receipt_text
+
+    def process_new_order(self):
+        """Coordinates a full order: build cart, calculate bill, generate receipt, record history."""
+        print("\n--- Starting New Order ---")
+        customer = input("Enter Customer Name: ").strip() or "Guest"
+        order_id = random.randint(1000, 9999)
+
+        cart = self.build_cart()
+        if cart is None:
+            return
+
+        bill = self.calculate_bill(cart)
+        now = datetime.now()
+        self.generate_receipt(customer, order_id, now, cart, bill)
+
+        order_summary = {
+            "order_id": order_id,
+            "customer": customer,
+            "total": bill["total"],
+            "time": now.strftime('%H:%M:%S')
+        }
+        self.order_history.append(order_summary)
+        self.total_daily_sales += bill["total"]
+
+    def show_order_history(self):
+        """Displays transactions processed this session."""
+        print("\n========== ORDER HISTORY ==========")
+        if not self.order_history:
+            print("No orders processed yet today.")
+        else:
+            print(f"{'Order ID':<10}{'Customer':<15}{'Time':<10}{'Total Paid'}")
+            print("-" * 45)
+            for order in self.order_history:
+                print(f"{order['order_id']:<10}{order['customer']:<15}{order['time']:<10}${order['total']:.2f}")
+        print("===================================")
+
+    def show_daily_report(self):
+        """Displays total terminal statistics."""
+        print("\n========== DAILY SALES REPORT ==========")
+        print(f"Total Orders Closed : {len(self.order_history)}")
+        print(f"Total Gross Revenue : ${self.total_daily_sales:.2f}")
+        print("========================================")
+
+    def run_system(self):
+        """System execution run by issuing text commands directly instead of numeric choice menus."""
+        print("==============================================")
+        print("        WELCOME TO CAFE COMMAND CONSOLE       ")
+        print("==============================================")
+        print("Available Commands: MENU | ORDER | HISTORY | REPORT | QUIT")
+
+        while True:
+            command = input("\nEnter System Command: ").upper().strip()
+
+            if command == "MENU":
+                self.display_menu()
+            elif command == "ORDER":
+                self.display_menu()
+                self.process_new_order()
+            elif command == "HISTORY":
+                self.show_order_history()
+            elif command == "REPORT":
+                self.show_daily_report()
+            elif command == "QUIT":
+                print("\nShutting down terminal. Goodbye!")
+                break  
+            else:
+                print("Invalid command! Type: MENU, ORDER, HISTORY, REPORT, or QUIT.")
+
+     # Execution
+if  __name__ == "__main__":
+    cafe_admin = CafeSystem()
+    cafe_admin.run_system()
