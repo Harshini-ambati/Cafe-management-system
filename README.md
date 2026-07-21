@@ -37,14 +37,13 @@ A command-line based **Cafe Management System** developed in **Python** using **
 ![Cart](screenshots/cart.png)
 
 ### 🧾 Receipt
-![Receipt](screenshots/receipt.png)
+![Receipt](screenshots/Receipt.png)
 
 ### ❌ Remove Option
-![Remove Option](screenshots/remove_option.png)
+![Remove Option](screenshots/Remove(Option).png)
 
 ### 📊 Sales Report
-![Sales Report](screenshots/sales_report.png)
-
+![Sales Report](screenshots/Sales_report.png)
 ---
 ## ▶️ Getting Started
 
